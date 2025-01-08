@@ -4,6 +4,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 import time
 import joblib
+import google.generativeai as genai
+import matplotlib.pyplot as plt
 
 # page layout
 st.set_page_config(page_title="Telco Churn Engine", page_icon="🧊", layout="wide")
@@ -68,13 +70,34 @@ with st.chat_message("assistant", avatar="https://static.vecteezy.com/system/res
 
     if submit:
         # show preview in table in expander
-        with st.expander("Preview Data", expanded=True):
+        with st.status("Preview Data", expanded=True):
             st.write(data.head())
 
         model = joblib.load("model/model.pkl")
         prediction = model.predict(data)
         data["Churn Prediction"] = prediction
+        
+        # count how many churn
+        churn_count = data["Churn Prediction"].value_counts()
+        
         # show prview in table in expander
-        with st.expander("Prediction", expanded=True):
+        with st.status("Prediction", expanded=True):
+            st.write("The prediction is done. There are {} churn customers out of the total {} customers.".format(churn_count[1], len(data)))
             st.write(data.head())
         
+        # plot a pie chart
+        with st.status("Churn Pie Chart", expanded=True):
+            st.write("The pie chart shows the distribution of churn customers.")
+            fig, ax = plt.subplots()
+            # resize the pie chart
+            fig.set_size_inches(3, 3)
+            ax.pie(churn_count, labels=["Churn", "Non-Churn"], autopct='%1.1f%%', startangle=90)
+            st.pyplot(fig)
+        
+        with st.status("AI Opinion", expanded=True):
+            try:
+                ai_model = genai.GenerativeModel("gemini-1.5-flash")
+                response = ai_model.generate_content(f"Give some opinions in about 100 word based on the prediction results where there are {churn_count[1]} cases of attrition out of the total {len(data)} number of customers.")
+                st.write(response.text)
+            except Exception as e:
+                st.write("You don't have access to this feature. Please authenticate to use this feature.")
